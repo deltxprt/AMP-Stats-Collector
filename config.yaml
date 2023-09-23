@@ -1,7 +1,0 @@
-url: "https://amp.cloud.markaplay.net"
-username: delta
-password: "HqEFb!G4Lif#NxgkR6obGd$zA"
-influxAddr: "http://mon.lab.markaplay.net:8086"
-org: lab
-bucket: AMP-Stats
-token: "iviz-hWRlynkwEJPdDRoRuz-aa_j7ump5T_H_eJfExKbFOBZfrgEmw7j-vOrMfnOC6wvKy_5a2ZiqRTAjRzdFg=="
