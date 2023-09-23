@@ -233,6 +233,7 @@ func main() {
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath("/etc/AMP-Stats/")
+	viper.AddConfigPath("/config/")
 	viper.AddConfigPath(".")
 	err := viper.ReadInConfig()
 	if err != nil {
