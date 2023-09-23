@@ -6,8 +6,15 @@ import (
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	"github.com/influxdata/influxdb-client-go/v2/api/write"
 	"github.com/spf13/viper"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/jaeger"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
 	"golang.org/x/net/context"
 	"io"
+	"log"
 	"log/slog"
 	"net/http"
 	"os"
@@ -99,10 +106,15 @@ var (
 	organization string
 	bucket       string
 	token        string
+	interval     time.Duration
+	jaegerURL    string
 )
 
 func ApiCall(url string, data map[string]string) ([]byte, error) {
 	//fmt.Println(loginUrl)
+	ctx := context.Background()
+	ctx, span := otel.Tracer("amp-stats-mon").Start(ctx, "ApiCall_func")
+	defer span.End()
 	var body []byte
 	payloadBuf := new(bytes.Buffer)
 	err := json.NewEncoder(payloadBuf).Encode(data)
@@ -132,6 +144,9 @@ func ApiCall(url string, data map[string]string) ([]byte, error) {
 	return body, nil
 }
 func getSessionId() (string, error) {
+	ctx := context.Background()
+	ctx, span := otel.Tracer("amp-stats-mon").Start(ctx, "sessionId_fetch_func")
+	defer span.End()
 	type Login struct {
 		SessionID string `json:"sessionID"`
 	}
@@ -158,6 +173,9 @@ func getSessionId() (string, error) {
 }
 
 func updateInstancesHandler() error {
+	ctx := context.Background()
+	ctx, span := otel.Tracer("amp-stats-mon").Start(ctx, "Instances_fetch_func")
+	defer span.End()
 	getInstancesUrl := url + "/API/ADSModule/GetInstances"
 
 	var listInstances GetInstances
@@ -196,6 +214,9 @@ func updateInstancesHandler() error {
 }
 
 func sendStats(instance GetInstance) error {
+	ctx := context.Background()
+	ctx, span := otel.Tracer("amp-stats-mon").Start(ctx, "SendStats_func")
+	defer span.End()
 	client := influxdb2.NewClient(influxAddr, token)
 
 	writeAPI := client.WriteAPIBlocking(organization, bucket)
@@ -236,6 +257,20 @@ func main() {
 	organization = viper.GetString("org")
 	bucket = viper.GetString("bucket")
 	token = viper.GetString("token")
+	interval = viper.GetDuration("interval")
+	jaegerURL = viper.GetString("jaegerURL")
+
+	if err != nil {
+		logger.Error("unable to parse interval", err)
+	}
+
+	tp, tpErr := JaegerTraceProvider()
+	if tpErr != nil {
+		log.Fatal(tpErr)
+	}
+	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
+
 	for {
 		logger.Info("Updating instances")
 		sessionId, err = getSessionId()
@@ -246,6 +281,22 @@ func main() {
 		if err != nil {
 			logger.Error("unable to update instances", err)
 		}
-		time.Sleep(time.Second * 10)
+		time.Sleep(interval)
 	}
+}
+
+func JaegerTraceProvider() (*sdktrace.TracerProvider, error) {
+	exp, err := jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(jaegerURL)))
+	if err != nil {
+		return nil, err
+	}
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(exp),
+		sdktrace.WithResource(resource.NewWithAttributes(
+			semconv.SchemaURL,
+			semconv.ServiceNameKey.String("amp-stats-mon"),
+			semconv.DeploymentEnvironmentKey.String("production"),
+		)),
+	)
+	return tp, nil
 }

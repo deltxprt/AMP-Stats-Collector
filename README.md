@@ -14,6 +14,8 @@ influxAddr: "https://influx.app:8086"
 org: superOrg
 bucket: AMP-bucket
 token: "superlongtoken1234"
+interval: 30s # ex: 10s, 5m, 1h
+jaegerURL: "http://jaeger.app:14268/api/traces"
 ```
 
 # docker
