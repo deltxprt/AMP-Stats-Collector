@@ -10,13 +10,10 @@ builds:
     goos:
       - linux
       - windows
-      - js
     goarch:
       - amd64
-      - 386
       - arm64
       - arm
-      - wasm
 
 release:
   target_commitish: '{{ .Commit }}'
