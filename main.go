@@ -200,16 +200,6 @@ func sendStats(instance GetInstance) error {
 
 	writeAPI := client.WriteAPIBlocking(organization, bucket)
 
-	//instanceInfo := map[string]interface{}{
-	//	"Module":       instance.Module,
-	//	"Running":      instance.Running,
-	//	"Suspended":    instance.Suspended,
-	//	"CPU_Usage":    instance.Metrics.CPUUsage.RawValue,
-	//	"Memory_Usage": instance.Metrics.MemoryUsage.RawValue,
-	//	"Memory_Max":   instance.Metrics.MemoryUsage.MaxValue,
-	//	"ActiveUsers":  instance.Metrics.ActiveUsers.RawValue,
-	//	"MaxUsers":     instance.Metrics.ActiveUsers.MaxValue,
-	//}
 	point := write.NewPointWithMeasurement(instance.InstanceName).
 		AddField("CPU_Usage", instance.Metrics.CPUUsage.RawValue).
 		AddField("Memory_Usage", instance.Metrics.MemoryUsage.RawValue).
@@ -246,9 +236,16 @@ func main() {
 	organization = viper.GetString("org")
 	bucket = viper.GetString("bucket")
 	token = viper.GetString("token")
-	sessionId, err = getSessionId()
-	err = updateInstancesHandler()
-	if err != nil {
-		logger.Error("can't update stats", err)
+	for {
+		logger.Info("Updating instances")
+		sessionId, err = getSessionId()
+		if err != nil {
+			logger.Error("unable to get session id", err)
+		}
+		err = updateInstancesHandler()
+		if err != nil {
+			logger.Error("unable to update instances", err)
+		}
+		time.Sleep(time.Second * 10)
 	}
 }
