@@ -48,7 +48,7 @@ changelog:
       - '^examples:'
 
 kos:
-  - repository: ghcr.io/deltxprt/AMP-Stats-Collector
+  - repository: ghcr.io/deltxprt/amp-stats-collector
     tags:
     - '{{.Version}}'
     - latest
